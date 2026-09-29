@@ -163,4 +163,4 @@ Chưa nhận `config/challenge.json` nên chỉ chạy practice bằng `--scenar
 - [x] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
 - [x] Repository chạy lại được theo README.
 - [x] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
-- [ ] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
+- [x] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
