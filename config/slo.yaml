@@ -3,11 +3,33 @@ primary_slo:
   name: fast_successful_requests
   window: 28d
   sli:
-    good_event: 'event == "response_sent" and latency_ms <= 3000'
+    # Request "tốt" = trả lời thành công VÀ nhanh. Request lỗi (request_failed) không có
+    # response_sent nên tự động bị tính là "xấu" vì mẫu số là request_received.
+    good_event: 'event == "response_sent" and latency_ms <= 2000'
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình.
+  # Điều chỉnh ngưỡng 3000 ms -> 2000 ms dựa trên baseline đo ngày 2026-09-29:
+  # - Bình thường (prompt đã cache): latency_ms ~155 ms; request fetch lại prompt sau khi
+  #   cache 60s hết hạn: ~260-2000 ms -> nằm trong ngưỡng 2000 ms.
+  # - Incident rag_slow: latency_ms ~2656 ms. Với ngưỡng cũ 3000 ms, SLO KHÔNG nhìn thấy
+  #   incident dù người dùng phải chờ; ngưỡng 2000 ms bắt được nó.
+  # - Giữ target 99.5%: đủ chặt cho chat API nhưng vẫn chừa budget cho cold start/prompt fetch.
+  error_budget:
+    # Theo thời gian: 28 ngày x 24 x 60 = 40 320 phút x 0.5% = 201.6 phút (~3 giờ 22 phút)
+    minutes_per_window: 201.6
+    # Theo request: với giả định 1 000 request/ngày -> 28 000 request x 0.5% = 140 request xấu
+    example_requests_per_day: 1000
+    example_bad_requests_allowed: 140
+    burn_rate_alerts:
+      # Burn rate 14.4 trong 1 giờ tiêu ~2.1% budget 28 ngày (14.4 x 1h / 672h) -> page ngay
+      fast_burn: {burn_rate: 14.4, bad_ratio_pct: 7.2, long_window: 1h, short_window: 5m}
+      # Burn rate 6 trong 6 giờ tiêu ~5.4% budget -> ticket/Slack
+      slow_burn: {burn_rate: 6, bad_ratio_pct: 3.0, long_window: 6h, short_window: 30m}
+  note: >-
+    latency_ms được đo bên trong LabAgent.run nên chưa bao gồm thời gian xếp hàng khi
+    event loop bị chặn (rag_slow + concurrency 5: client chờ ~13 s, log ghi ~2.6 s).
+    SLI này vì vậy là cận dưới của trải nghiệm người dùng.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5

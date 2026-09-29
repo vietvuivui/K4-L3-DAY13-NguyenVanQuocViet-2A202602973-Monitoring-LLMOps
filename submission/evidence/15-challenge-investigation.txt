@@ -1,0 +1,25 @@
+$ python scripts/investigate.py --start 2026-09-29T08:38:39Z --end 2026-09-29T08:38:53Z --baseline-minutes 2
+== 1. METRICS  (incident 08:38:39–08:38:53 UTC vs baseline 0:02:00 trước đó)
+  requests               baseline=10                           incident=5
+  latency_p50_ms         baseline=153.0                        incident=2654.0
+  latency_p95_ms         baseline=1610.0                       incident=2655.0
+  ttft_p95_ms            baseline=51.0                         incident=50.0
+  error_rate_pct         baseline=0.0                          incident=0.0
+  error_types            baseline={}                           incident={}
+  retrieval_success_pct  baseline=100.0                        incident=100.0
+  avg_cost_usd           baseline=0.002365                     incident=0.002224
+  avg_tokens_in          baseline=33.8                         incident=35.0
+  avg_tokens_out         baseline=150.9                        incident=141.25
+  quality_mean           baseline=0.88                         incident=0.85
+  ! latency_ms: latency P50 153.0 -> 2654.0 ms, P95 1610.0 -> 2655.0 ms
+
+== 2. LOGS  (request đại diện cho 'latency_ms': correlation_id=req-804552e0)
+  {"service": "api", "payload": {"message_preview": "Which signal should be checked after latency increases?"}, "event": "request_received", "env": "dev", "feature": "monitoring", "correlation_id": "req-804552e0", "user_id_hash": "4570299f37e2", "model": "claude-sonnet-4-5", "session_id": "k4-l3a-challenge-s04", "level": "info", "ts": "2026-09-29T08:38:45.905094Z"}
+  {"service": "api", "latency_ms": 2655, "ttft_ms": 50, "tokens_in": 36, "tokens_out": 93, "cost_usd": 0.001503, "quality_score": 0.9, "tool_name": "retrieval", "tool_success": true, "payload": {"answer_preview": "Starter answer. You should improve this output logic and add better quality chec..."}, "event": "response_sent", "env": "dev", "feature": "monitoring", "correlation_id": "req-804552e0", "user_id_hash": "4570299f37e2", "model": "claude-sonnet-4-5", "session_id": "k4-l3a-challenge-s04", "level": "info", "ts": "2026-09-29T08:38:48.563208Z"}
+
+== 3. TRACES  (metadata.correlation_id == req-804552e0)
+  trace_id: 34177cdd91d7de3c34bbaa33fb2cd760
+  lab-agent-run [AGENT] 2656 ms level=DEFAULT 
+    retrieval [RETRIEVER] 2501 ms level=DEFAULT 
+    prompt-resolve [SPAN] 0 ms level=DEFAULT 
+    llm-generate [GENERATION] 153 ms level=DEFAULT  model=claude-sonnet-4-5 usage={'input': 36, 'output': 93, 'total': 129} cost=0.001503 prompt=day13-chat v1

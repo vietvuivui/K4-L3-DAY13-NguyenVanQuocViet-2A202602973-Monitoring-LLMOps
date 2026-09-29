@@ -3,9 +3,10 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from . import metrics
-from .mock_llm import FakeLLM
+from .mock_llm import FakeLLM, FakeResponse
 from .mock_rag import retrieve
 from .pii import hash_user_id, summarize_text
 from .prompt_management import resolve_prompt
@@ -51,18 +52,33 @@ class LabAgent:
             },
         ):
             started = time.perf_counter()
-            docs = retrieve(message)
-            prompt = resolve_prompt(
-                langfuse_client,
-                feature=feature,
-                docs=docs,
-                message=message,
-                enabled=tracing_enabled(),
-            )
+            query_preview = summarize_text(message)
+            docs = self._traced_retrieve(langfuse_client, message, query_preview)
+            # Span riêng để waterfall thấy thời gian fetch prompt từ Langfuse.
+            with langfuse_client.start_as_current_observation(
+                name="prompt-resolve", as_type="span"
+            ) as prompt_span:
+                prompt = resolve_prompt(
+                    langfuse_client,
+                    feature=feature,
+                    docs=docs,
+                    message=message,
+                    enabled=tracing_enabled(),
+                )
+                prompt_span.update(
+                    metadata={
+                        "prompt_name": prompt.name,
+                        "prompt_label": prompt.label,
+                        "prompt_version": prompt.version,
+                        "prompt_source": prompt.source,
+                    },
+                    level="WARNING" if prompt.fetch_error else None,
+                    status_message=prompt.fetch_error,
+                )
             langfuse_client.update_current_span(
                 metadata={
                     "doc_count": len(docs),
-                    "query_preview": summarize_text(message),
+                    "query_preview": query_preview,
                     "prompt_name": prompt.name,
                     "prompt_label": prompt.label,
                     "prompt_version": prompt.version,
@@ -71,13 +87,10 @@ class LabAgent:
                 },
                 version=prompt.version,
             )
-            # TODO (CP2): instrument retrieve() and FakeLLM.generate() as child
-            # observations. The nested generation must receive prompt, usage and cost.
             with propagate_attributes(prompt=prompt.managed_prompt):
-                response = self.llm.generate(prompt.text)
+                response, cost_usd = self._traced_generate(langfuse_client, prompt, query_preview)
             quality_score = self._heuristic_quality(message, response.text, docs)
             latency_ms = int((time.perf_counter() - started) * 1000)
-            cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
 
         metrics.record_request(
             latency_ms=latency_ms,
@@ -97,6 +110,62 @@ class LabAgent:
             cost_usd=cost_usd,
             quality_score=quality_score,
         )
+
+    def _traced_retrieve(self, langfuse_client, message: str, query_preview: str) -> list[str]:
+        # Chỉ gửi query đã scrub lên Langfuse; message gốc có thể chứa PII.
+        with langfuse_client.start_as_current_observation(
+            name="retrieval",
+            as_type="retriever",
+            input={"query_preview": query_preview},
+        ) as observation:
+            try:
+                docs = retrieve(message)
+            except Exception as exc:
+                observation.update(
+                    level="ERROR",
+                    status_message=type(exc).__name__,
+                    metadata={"tool_success": False, "error_type": type(exc).__name__},
+                )
+                raise
+            observation.update(
+                output={"doc_count": len(docs), "doc_previews": [summarize_text(d, 60) for d in docs]},
+                metadata={"tool_success": True, "doc_count": len(docs)},
+            )
+            return docs
+
+    def _traced_generate(self, langfuse_client, prompt, query_preview: str) -> tuple[FakeResponse, float]:
+        # Không capture prompt đã compile (chứa message gốc); chỉ ghi preview đã scrub.
+        with langfuse_client.start_as_current_observation(
+            name="llm-generate",
+            as_type="generation",
+            model=self.model,
+            prompt=prompt.managed_prompt,
+            input={
+                "prompt_name": prompt.name,
+                "prompt_version": prompt.version,
+                "query_preview": query_preview,
+            },
+            metadata={"prompt_label": prompt.label, "prompt_source": prompt.source},
+        ) as generation:
+            started_at = datetime.now(timezone.utc)
+            response = self.llm.generate(prompt.text)
+            cost_usd = self._estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+            generation.update(
+                output={"answer_preview": summarize_text(response.text)},
+                completion_start_time=started_at + timedelta(milliseconds=response.ttft_ms),
+                usage_details={
+                    "input": response.usage.input_tokens,
+                    "output": response.usage.output_tokens,
+                    "total": response.usage.input_tokens + response.usage.output_tokens,
+                },
+                cost_details={
+                    "input": round(response.usage.input_tokens / 1_000_000 * 3, 6),
+                    "output": round(response.usage.output_tokens / 1_000_000 * 15, 6),
+                    "total": cost_usd,
+                },
+                metadata={"ttft_ms": response.ttft_ms},
+            )
+            return response, cost_usd
 
     def _estimate_cost(self, tokens_in: int, tokens_out: int) -> float:
         input_cost = (tokens_in / 1_000_000) * 3

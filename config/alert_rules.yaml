@@ -1,25 +1,39 @@
 alerts:
-  - name: TODO_alert_1
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: high_latency_p95
+    severity: P2
+    # Triệu chứng: người dùng chờ lâu. Ngưỡng trùng ngưỡng SLI của SLO (2000 ms).
+    condition: 'p95(latency_ms where event == "response_sent") over 5m > 2000'
+    duration: 5m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: "#day13-llm-alerts"
+    owner: llm-platform-oncall (Nguyễn Văn Quốc Việt)
+    slo: fast_successful_requests
     runbook: docs/alerts.md#alert-1
-  - name: TODO_alert_2
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: high_error_rate_or_retrieval_failure
+    severity: P1
+    # Triệu chứng: người dùng nhận lỗi 500 hoặc câu trả lời không có context.
+    condition: >-
+      count(event == "request_failed") / count(event == "request_received") * 100 over 5m > 2
+      OR count(tool_success == true) / count(tool_success != null) * 100 over 5m < 90
+    duration: 3m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: "#day13-llm-alerts"
+    owner: llm-platform-oncall (Nguyễn Văn Quốc Việt)
+    slo: fast_successful_requests
     runbook: docs/alerts.md#alert-2
-  - name: TODO_alert_3
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: cost_per_request_spike
+    severity: P3
+    # Triệu chứng: chi phí mỗi câu trả lời tăng bất thường (baseline ~0.0017 USD/request),
+    # có nguy cơ vượt guardrail daily_cost_usd_max = 2.5.
+    condition: >-
+      avg(cost_usd where event == "response_sent") over 15m > 0.0035
+      OR sum(cost_usd) over 1h > 0.104
+    duration: 15m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: "#day13-llm-cost"
+    owner: llm-platform-oncall (Nguyễn Văn Quốc Việt)
+    slo: guardrails.daily_cost_usd_max
     runbook: docs/alerts.md#alert-3
