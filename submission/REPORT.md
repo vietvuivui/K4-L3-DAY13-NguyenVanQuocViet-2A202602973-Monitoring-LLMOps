@@ -48,7 +48,7 @@
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | 30/100 (62 records; 60 thiếu required fields/enrichment; 0 correlation ID) | **100/100** (378 records, 187 correlation ID, 0 thiếu field, 0 PII leak) | Baseline chưa làm TODO CP1; sau CP1 mọi log API có `correlation_id` + `user_id_hash`, `session_id`, `feature`, `model`, `env` |
+| `validate_logs.py` | 30/100 (62 records; 60 thiếu required fields/enrichment; 0 correlation ID) | **100/100** (387 records, 191 correlation ID, 0 thiếu field, 0 PII leak) | Baseline chưa làm TODO CP1; sau CP1 mọi log API có `correlation_id` + `user_id_hash`, `session_id`, `feature`, `model`, `env` |
 | `validate_dashboard.py` | 6/6 panel hợp lệ | **6/6 panel hợp lệ** | Contract giữ nguyên; dashboard runtime `scripts/dashboard.py` đọc chính contract này (ảnh 11a/11b) |
 | `pytest` | 22 passed | **37 passed** | Thêm 15 test: middleware (dùng lại/sinh `x-request-id`, header `x-response-time-ms`, không rò context), PII (CCCD, thẻ, hộ chiếu, text thường), child observations không chứa PII, dashboard runtime, investigate |
 | Số traces hợp lệ | Chỉ có root `LabAgent.run`, chưa có child span | **151 trace đầy đủ** root `lab-agent-run` → `retrieval` + `prompt-resolve` + `llm-generate` (tổng 193 trace trong project) | Đếm qua Observations API: 31 trace chỉ có root là từ CP0/CP1 (trước khi instrument); 11 trace `tool_fail` có `retrieval` ERROR và không có generation — đúng hành vi. Ảnh 06: lọc `name:lab-agent-run` |
