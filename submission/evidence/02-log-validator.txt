@@ -1,9 +1,9 @@
-$ python scripts/validate_logs.py   # 2026-09-29T09:22:59Z
+$ python scripts/validate_logs.py   # 2026-09-29T09:44:59Z
 --- Lab Verification Results ---
-Total log records analyzed: 378
+Total log records analyzed: 387
 Records with missing required fields: 0
 Records with missing enrichment (context): 0
-Unique correlation IDs found: 187
+Unique correlation IDs found: 191
 Potential PII leaks detected: 0
 
 --- Grading Scorecard (Estimates) ---

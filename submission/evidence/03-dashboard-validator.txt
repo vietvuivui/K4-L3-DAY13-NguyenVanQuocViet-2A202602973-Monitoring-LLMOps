@@ -1,17 +1,17 @@
-$ python scripts/validate_dashboard.py   # 2026-09-29T09:23:00Z
+$ python scripts/validate_dashboard.py   # 2026-09-29T09:44:59Z
 HỢP LỆ: 6/6 panel có trong dashboard contract.
 
 $ python scripts/dashboard.py --print
 K4-L3A Day 13 Monitoring & LLMOps | last 60 min
-- [OK] Latency percentiles and TTFT (ms): p95=2656.0 (threshold lte 3000)
-    {'p50': 156.0, 'p95': 2656.0, 'p99': 2658.0, 'ttft_p95': 51.0, 'n': 107}
-- [OK] Request traffic (requests_per_minute): rate_per_minute=1.95 (threshold gte 1)
-    {'count': 117, 'rate_per_minute': 1.95}
-- [BREACH] Error rate and retrieval success (percent): error_rate_pct=8.55 (threshold lte 2)
-    {'error_rate_pct': 8.55, 'tool_success_rate_pct': 91.45, 'count_by_value': {'RuntimeError': 10}}
-- [OK] Cost over time (usd): total=0.337437 (threshold lte 2.5)
-    {'total': 0.337437}
-- [OK] Input and output tokens (tokens): sum_by_field=25403 (threshold lte 50000)
-    {'tokens_in': 3634, 'tokens_out': 21769}
-- [OK] Quality proxy (score_0_to_1): mean=0.877 (threshold gte 0.75)
-    {'mean': 0.877}
+- [OK] Latency percentiles and TTFT (ms): p95=153.0 (threshold lte 3000)
+    {'p50': 152.0, 'p95': 153.0, 'p99': 155.0, 'ttft_p95': 50.0, 'n': 26}
+- [BREACH] Request traffic (requests_per_minute): rate_per_minute=0.43 (threshold gte 1)
+    {'count': 26, 'rate_per_minute': 0.43}
+- [OK] Error rate and retrieval success (percent): error_rate_pct=0.0 (threshold lte 2)
+    {'error_rate_pct': 0.0, 'tool_success_rate_pct': 100.0, 'count_by_value': {}}
+- [OK] Cost over time (usd): total=0.047598 (threshold lte 2.5)
+    {'total': 0.047598}
+- [OK] Input and output tokens (tokens): sum_by_field=3854 (threshold lte 50000)
+    {'tokens_in': 851, 'tokens_out': 3003}
+- [OK] Quality proxy (score_0_to_1): mean=0.862 (threshold gte 0.75)
+    {'mean': 0.862}
